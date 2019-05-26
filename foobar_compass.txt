@@ -2,50 +2,52 @@
           ABS 
           ENTRY  START
 ******************************************************************
-*         FOOBAR - PRINTER NUMBERS OR FOO OR BAR OR BOTH.        *
+*         FOOBAR - Print numbers or foo or bar or both.          *
 *                                                                *
-*         IF I IS DIVISIBLE BY 3, PRINT FOO                      *
-*         IF I IS DIVISIBLE BY 5, PRINT BAR                      *
-*         IF I IS DIVISIBLE BY 3 and 5, PRINT FOOBAR             *
+*         If I is divisible by 3, print foo                      *
+*         If I is divisible by 5, print bar                      *
+*         If I is divisible by 3 and 5, print foobar             *
 ******************************************************************
-          SYSCOM B1          TELL COMPILER WE SET B1 TO 1
+          SYSCOM B1          Tell compiler we set B1 to 1
           ORG    110B
 TME       CON    0
-*         1      8           30
-START     SB1    1           ALWAYS START WITH B1=1
-          SX6    B1          LOOP START
-          SA6    I           INITIALIZE I TO 1
-          BX3    X6          X3 IS I IN OUR LOOP
-LOOP      SA4    THREE       X4=3
-          RJ     MOD         CALL MOD(I,3): (X3,X4) -> X6
-          BX0    X6          COPY OF MOD(I,3) RESULT
-          SA4    FIVE        X4=5
-          RJ     MOD         CALL MOD(I,5): (X3,X4) -> X6
-          BX5    X0+X6       X5 IS MOD(I,3)>0  MOD(I,5)>0
-          ZR     X5,MOD3A5   IF NOT (MOD(I,3)>0  MOD(I,5)>0)
-          ZR     X6,MOD5
-          ZR     X0,MOD3
-          EQ     PRINTI
-MOD3      WRITEH OUTPUT,FOO,FOOLEN       MOVE TO BUFFER
-          EQ     FLUSH
-MOD5      WRITEH OUTPUT,BAR,BARLEN       MOVE TO BUFFER
-          EQ     FLUSH
-MOD3A5    WRITEH OUTPUT,FOOBAR,FBLEN    MOVE TO BUFFER
-          EQ     FLUSH
-PRINTI    BX1    X3          COPY I TO X1 FOR CDD ROUTINE
-          RJ     =XCDD
-          SA6    NUM         SAVE RESULT TO MEMORY FOR WRITE  
+*
+*         11     18          30
+*
+START     SB1    1           b1 <- 1   Always start with B1=1
+          SX6    B1          x6 <- b1  Loop start
+          SA6    I           a6 <- addr(I) x6 -> I  Store in memory
+          BX3    X6          x3 <- x6  X3 is I in our loop
+LOOP      SA4    THREE       a3 <- addr(THREE), X4 <- 3
+          RJ     MOD         Return jump MOD(I,3):  X6 <- MOD(X3,X4)
+          BX0    X6          x0 <- x6  Copy of MOD(I,3) result
+          SA4    FIVE        a4 <- addr(FIVE), X4 <- 5
+          RJ     MOD         Return jump MOD(I,5):  X6 <- MOD(X3,X4)
+          BX5    X0+X6       x5 <- x0|x6  X5 is MOD(I,3)>0 .or. MOD(I,5)>0
+          ZR     X5,MOD3A5   If X5 .eq. 0 goto MOD3A5  If .not. (MOD(I,3)>0 .or. MOD(I,5)>0)
+          ZR     X0,MOD3     If X0 .eq. 0 goto MOD3    If .not. MOD(I,3)>0
+          ZR     X6,MOD5     If X6 .eq. 0 goto MOD5    If .not. MOD(I,5)>0
+          EQ     PRINTI      Goto PRINTI
+MOD3      WRITEH OUTPUT,FOO,FOOLEN       Move to buffer
+          EQ     FLUSH       Goto FLUSH
+MOD5      WRITEH OUTPUT,BAR,BARLEN       Move to buffer
+          EQ     FLUSH       Goto FLUSH
+MOD3A5    WRITEH OUTPUT,FOOBAR,FBLEN     Move to buffer
+          EQ     FLUSH       Goto FLUSH
+PRINTI    BX1    X3          x1 <- x3  Copy I to X1 for CDD routine
+          RJ     =XCDD       Return Jump to CDD
+          SA6    NUM         a6 <- addr(NUM), x6 -> NUM  Save to memory for write
           WRITEH OUTPUT,NUM,1
 *
-FLUSH     WRITER OUTPUT,R    FLUSH BUFFER
-          SA3    I           X3=I
-          SX3    X3+B1       INCREMENT I BY 1
-          SA4    MAX         X4=100
-          IX4    X4-X3
-          BX6    X3          COPY TO REGISTER FOR SAVING TO MEMORY
-          NG     X4,LOOPEND  EXIT LOOP IF I GT MAX  
-          SA6    I           SAVE I TO MEMORY
-          EQ     LOOP        LOOP AGAIN
+FLUSH     WRITER OUTPUT,R    Flush buffer
+          SA3    I           a3 <- addr(I)  x3 <- I
+          SX3    X3+B1       x3 <- x3+b1   Increment I by 1
+          SA4    MAX         a4 <- addr(MAX), X4 <- 100
+          IX4    X4-X3       x4 <- x4-x3
+          BX6    X3          x6 <- x3  Copy to register for saving to memory
+          NG     X4,LOOPEND  Exit loop if X4 (I) .gt. MAX  
+          SA6    I           a6 <- addr(I),  x6 -> I  Save I to memory
+          EQ     LOOP        Goto LOOP   Loop again
 LOOPEND   WRITEH OUTPUT,DONE,1
           WRITER OUTPUT,R
           ENDRUN
@@ -63,34 +65,34 @@ DONE      DATA   4HDONE
 I         BSS    1
 NUM       BSS    1
 OBUF      BSS    301B
-OUTPUT   FILEB     OBUF,301B
+OUTPUT    FILEB  OBUF,301B
 ******************************************************************
-*         SUBROUTINE MOD - CALCULATE MODULUS (REMAINDER)         *
+*         Subroutine MOD - Calculate modulus (remainder)         *
 *                                                                *
-*         INPUT:  X3,X4                                          *
-*         OUTPUT: X6: MOD(X3,X4)                                 *
-*         USES:   X6,X7,B7                                       *
+*         Input:  X3,X4                                          *
+*         Output: X6: MOD(X3,X4)                                 *
+*         Uses:   X6,X7,B7                                       *
 *                                                                *
 *         INT(N/D) -> X                                          *
-*         X*D -> TEMP                                            *
-*         N-TEMP -> R                                            *
+*         X*D -> Temp                                            *
+*         N-Temp -> R                                            *
 ******************************************************************
-MOD       BSS    1           STORAGE FOR OUR RETURN ADDRESS
-          BX6    X3          COPY X3 INTO X6
-          BX7    X4          COPY X4 INTO X7
-*                            X6=X6/X7 (INTEGER)
-          PX6                CONVERT TO FLOAT (PACK)
-          NX6                NORMALIZE
-          PX7                CONVERT TO FLOAT (PACK)
-          NX7                NORMALIZE
-          FX6    X6/X7       FLOATING POINT X6 = X6/X7
-          UX6    B7          CONVERT FLOAT TO INTERGER, EXPONENT IN B7 (UNPACK)
-          LX6    B7          LOGICAL SHIFT MANTISSA B7 BITS (REST OF INTEGER CONVERSION)
-          IX6    X6*X4       TEMP=X*D
-          IX6    X3-X6       R=N-TEMP
-          EQ     MOD         RETURN TO CALLER
+MOD       BSS    1           Storage for our return instruction and address
+          BX6    X3          X6 <- X3  Copy X3 into X6
+          BX7    X4          X7 <- X4  Copy X4 into X7
+*                            X6=X6/X7 (integer division)
+          PX6                Convert to float (pack)
+          NX6                Normalize
+          PX7                Convert to float (pack)
+          NX7                Normalize
+          FX6    X6/X7       Floating point X6 <- X6/X7
+          UX6    B7          Unpack X6 B7 bits  Convert float to interger, exponent in B7
+          LX6    B7          Logical shift mantissa B7 bits (rest of integer conversion)
+          IX6    X6*X4       X6 <- X6*X4  TEMP=X*D
+          IX6    X3-X6       X6 <- X3-X6  R=N-TEMP
+          EQ     MOD         Goto MOD     Return to caller
 ******************************************************************
-*         COMMON DECKS REQUIRED FOR OUR PROGRAM
+*         Common decks required for our program
 OPL       XTEXT  COMCSYS
 OPL       XTEXT  COMCWTH
 OPL       XTEXT  COMCWTO
